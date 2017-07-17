@@ -30,7 +30,7 @@ public class TestRecordSet {
         RecordSet rs = new RecordSet(size, false);
 
         for (int i = 12; i >= 0; --i) {
-            rs.insertIfRecord(new Long(i));
+            rs.insertIfRecord(i);
         }
 
         assertEquals(size, rs.records.size());
@@ -46,15 +46,15 @@ public class TestRecordSet {
         RecordSet rs = new RecordSet(size, true);
 
         // Fill with records
-        rs.insertIfRecord(new Long(10));
-        rs.insertIfRecord(new Long(9));
-        rs.insertIfRecord(new Long(7));
-        rs.insertIfRecord(new Long(6));
+        rs.insertIfRecord(10);
+        rs.insertIfRecord(9);
+        rs.insertIfRecord(7);
+        rs.insertIfRecord(6);
 
 
         // Insert two new records
-        rs.insertIfRecord(new Long(0));
-        rs.insertIfRecord(new Long(1));
+        rs.insertIfRecord(0);
+        rs.insertIfRecord(1);
 
 
         // Check sizes (it has grown by 2)
@@ -62,14 +62,14 @@ public class TestRecordSet {
         assertEquals(2, rs.oldRecords.size());
 
         // Insert two new recrods that are not records
-        rs.insertIfRecord(new Long(11));
-        rs.insertIfRecord(new Long(12));
+        rs.insertIfRecord(11);
+        rs.insertIfRecord(12);
 
         // Check that it did not grown
         assertEquals(2, rs.oldRecords.size());
 
         // Add a new record, but not in the first set (it does not grow)
-        rs.insertIfRecord(new Long(8));
+        rs.insertIfRecord(8);
         assertEquals(2, rs.oldRecords.size());
         assertEquals(new Long(8), rs.oldRecords.first());
     }
@@ -80,17 +80,17 @@ public class TestRecordSet {
         RecordSet rs = new RecordSet(size, true);
 
         // Fill with records
-        rs.insertIfRecord(new Long(10));
-        rs.insertIfRecord(new Long(9));
-        rs.insertIfRecord(new Long(7));
-        rs.insertIfRecord(new Long(6));
+        rs.insertIfRecord(10);
+        rs.insertIfRecord(9);
+        rs.insertIfRecord(7);
+        rs.insertIfRecord(6);
 
 
         // Insert two new records
-        rs.insertIfRecord(new Long(0));
-        rs.insertIfRecord(new Long(1));
+        rs.insertIfRecord(0);
+        rs.insertIfRecord(1);
 
-        rs.insertIfRecord(new Long(8));
+        rs.insertIfRecord(8);
         assertEquals(2, rs.oldRecords.size());
         assertEquals(new Long(8), rs.oldRecords.first());
     }

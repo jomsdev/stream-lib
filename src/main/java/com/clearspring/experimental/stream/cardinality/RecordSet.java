@@ -24,9 +24,9 @@ import java.util.TreeSet;
 public class RecordSet {
 
     public int size;
-    public boolean grows;
+    private boolean grows;
 
-    public int counter;
+    private int counter;
     public TreeSet<Long> records;
     public TreeSet<Long> oldRecords;
 
@@ -40,35 +40,37 @@ public class RecordSet {
         this.counter = counter;
 
         if (records == null) {
-            this.records = new TreeSet<Long>();
+            this.records = new TreeSet<>();
         } else {
             this.records = records;
         }
 
         if (oldRecords == null) {
-            this.oldRecords = new TreeSet<Long>();
+            this.oldRecords = new TreeSet<>();
         } else {
             this.oldRecords = oldRecords;
         }
     }
 
-    public boolean insertIfRecord(Long value) {
+    public boolean insertIfRecord(long value) {
         boolean modified = false;
 
-        if (this.records.size() < this.size && !this.records.contains(value)) {
-            modified=true;
-            this.records.add(value);
-        } else if (this.records.last() > value) {
-            modified=true;
-            this.records.add(value);
-            if (this.grows) {
-                this.oldRecords.add(this.records.last());
+        if (!this.records.contains(value) && !this.oldRecords.contains(value)) {
+            if (this.records.size() < this.size) {
+                modified = true;
+                this.records.add(value);
+            } else if (this.records.last() > value) {
+                modified = true;
+                this.records.add(value);
+                if (this.grows) {
+                    this.oldRecords.add(this.records.last());
+                }
+                this.records.remove(this.records.last());
+            } else if (this.grows && !this.oldRecords.isEmpty() && this.oldRecords.last() > value) {
+                modified = true;
+                this.oldRecords.add(value);
+                this.oldRecords.remove(this.oldRecords.last());
             }
-            this.records.remove(this.records.last());
-        } else if (this.grows && !this.oldRecords.isEmpty() && this.oldRecords.last() > value) {
-            modified=true;
-            this.oldRecords.add(value);
-            this.oldRecords.remove(this.oldRecords.last());
         }
 
         return modified;
