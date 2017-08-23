@@ -21,47 +21,83 @@ import java.util.TreeSet;
 public class RecordSet {
 
 
-    private int size;
+    private int replacementThreshold;
+    private int currentSize = 0;
+    private int maxSize;
+    private int recordCounter = 0;
     private TreeSet<Long>  records;
+    private TreeSet<Long>  pseudoRecords;
 
-    public RecordSet(int size) {
-        this.size = size;
-        this.records = new TreeSet<Long>();
-    }
+//    /* Constructor used for non-adaptative version of KMV
+//    * */
+//    public RecordSet(int replacementThreshold) {
+//        this.replacementThreshold = replacementThreshold;
+//        this.maxSize = replacementThreshold;
+//        this.records = new TreeSet<Long>();
+//    }
 
-    public RecordSet(TreeSet<Long> initialValues) {
-        this.size = initialValues.size();
+    public RecordSet(int replacementThreshold, int recordCounter, int maxSize, TreeSet<Long>
+            initialValues, TreeSet<Long> initialPseudos) {
+        this.recordCounter = recordCounter;
+        this.replacementThreshold = replacementThreshold;
+        this.maxSize = maxSize;
         this.records = initialValues;
+        this.pseudoRecords = initialPseudos;
     }
 
-    public int size(){
-        return size;
+    public RecordSet(RecordSet other) {
+        this.recordCounter = other.recordCounter;
+        this.replacementThreshold = other.replacementThreshold;
+        this.maxSize = other.maxSize;
+        this.records = new TreeSet<>(other.records);
+        this.pseudoRecords = new TreeSet<>(other.pseudoRecords);
     }
 
-    // TODO: check name
-    public boolean updateIfNecessary(long value) {
+    public int currentSize(){
+        return currentSize;
+    }
+
+    public boolean offer(long value) {
         boolean cardinalityAffected = false;
 
         if (!records.contains(value)){
-            if(records.size() < size || value < records.last()){
+            if(records.size() < replacementThreshold || value < records.last()){
                 records.add(value);
+                ++recordCounter;
                 cardinalityAffected = true;
             }
-            if(records.size() > size){
+            if(records.size() > replacementThreshold){
                 records.remove(records.last());
             }
         }
+        currentSize = records.size() + pseudoRecords.size();
 
         return cardinalityAffected;
     }
 
     public void merge(RecordSet that) {
-        // TODO: check this is correct when record size is fixed
         for(Long record : that.records()){
-            this.updateIfNecessary(record);
+            this.offer(record);
         }
     }
 
+    public Long maxValue() throws UnsupportedOperationException {
+        long maxValue;
+
+        if (!pseudoRecords.isEmpty()){
+            maxValue = pseudoRecords.last();
+        } else if (!records.isEmpty()){
+            maxValue = records.last();
+        } else {
+            throw new UnsupportedOperationException("No records in record set.");
+        }
+
+        return maxValue;
+    }
+
+    public int replacementThreshold(){
+        return replacementThreshold;
+    }
     public TreeSet<Long> records(){
         return records;
     }

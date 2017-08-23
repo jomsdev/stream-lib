@@ -63,14 +63,21 @@ import sun.reflect.generics.tree.Tree;
 public class AdaKMV implements ICardinality, Serializable {
 
     private final RecordSet recordSet;
-    private int numberOfRecords = 0;
 
 
     /**
-     * Create a new AdaKMV instance using the specified initial size
+     * Create a new non-adaptative KMV (non-growing)
      */
-    public AdaKMV(int size) {
-        this.recordSet = new RecordSet(size);
+    public AdaKMV(int threshold) {
+        this.recordSet = new RecordSet(threshold, 0, threshold, new TreeSet<Long>(), new TreeSet<Long>());
+    }
+
+    /**
+     * Create a new adaptative KMV TODO: not done
+     */
+    public AdaKMV(int threshold, int maxSize) {
+        this.recordSet = new RecordSet(threshold, 0, maxSize, new TreeSet<Long>(), new TreeSet<Long>
+                ());
     }
 
 
@@ -80,41 +87,43 @@ public class AdaKMV implements ICardinality, Serializable {
      *
      * @param recordSet - the initial values for the records set
      */
-    @Deprecated
-    public AdaKMV(int numberOfRecords, RecordSet recordSet) {
-        this.numberOfRecords = numberOfRecords;
-        this.recordSet = recordSet; // TODO: decide if this should be here or in RecordSet
+    public AdaKMV(RecordSet recordSet) { // TODO: add missing params
+        this.recordSet = recordSet;
     }
 
     @Override
     public boolean offerHashed(long hashedValue) {
-
         final long value = Math.abs(hashedValue);
-        return recordSet.updateIfNecessary(value);
+        return recordSet.offer(value);
     }
 
     @Override
-    public boolean offerHashed(int hashedValue) {
-        final long value = Math.abs(hashedValue);
-        return recordSet.updateIfNecessary(value);
+    public boolean offerHashed(int hashedInt) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean offer(Object o) {
-        final int x = MurmurHash.hash(o);
+        final long x = MurmurHash.hash64(o);
         return offerHashed(x);
     }
 
     @Override
     public long cardinality() {
-        // TODO: implement
-        return 0;
+        long cardinalityEstimation;
+        if (recordSet.currentSize() < recordSet.replacementThreshold()){
+            cardinalityEstimation = recordSet.currentSize();
+        } else {
+            final double distance = (1.0 * recordSet.maxValue()) / Long.MAX_VALUE;
+            cardinalityEstimation = (long) Math.floor(1.0 / distance * recordSet.currentSize());
+        }
+        return cardinalityEstimation;
     }
 
     // TODO: unchecked need to see if its necessary to add the size first
     @Override
     public int sizeof() {
-        return recordSet.size() * 8; // TODO: not sure what this is used for or how
+        return recordSet.currentSize() * 8; // TODO: not sure what this is used for or how
     }
 
     @Override
@@ -127,7 +136,7 @@ public class AdaKMV implements ICardinality, Serializable {
     }
 
     private void writeBytes(DataOutput serializedByteStream) throws IOException {
-        serializedByteStream.writeInt(recordSet.size() * 8); // TODO: check if 8 for long
+        serializedByteStream.writeInt(recordSet.currentSize() * 8); // TODO: check if 8 for long
         for (Long record : recordSet.records()){
             serializedByteStream.writeLong(record);
         }
@@ -147,8 +156,8 @@ public class AdaKMV implements ICardinality, Serializable {
 
     @Override
     public ICardinality merge(ICardinality... estimators) throws CardinalityMergeException {
-        AdaKMV merged = new AdaKMV(this.recordSet);
-        merged.addAll(this);
+        AdaKMV merged = new AdaKMV(new RecordSet(this.recordSet));
+//        merged.addAll(this);
 
         if (estimators == null) {
             return merged;

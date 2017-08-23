@@ -31,7 +31,8 @@ import static org.junit.Assert.assertTrue;
 
 public class TestAdaKMV {
 
-    // TODO: Rewrite or reuse all the tests    @Test
+
+    @Test
     public void testComputeCount() {
         AdaKMV adaKMV = new AdaKMV(16);
         adaKMV.offer(0);
@@ -46,6 +47,7 @@ public class TestAdaKMV {
         assertEquals(8, adaKMV.cardinality());
     }
 
+    /*
     @Test
     public void testSerialization() throws IOException, ClassNotFoundException {
         AdaKMV hll = new AdaKMV(8);
@@ -71,11 +73,11 @@ public class TestAdaKMV {
         AdaKMV hll2 = AdaKMV.Builder.build(hll.getBytes());
         assertEquals(hll.cardinality(), hll2.cardinality());
     }
-
+    */
     @Test
     public void testHighCardinality() {
         long start = System.currentTimeMillis();
-        AdaKMV adaKMV = new AdaKMV(10);
+        AdaKMV adaKMV = new AdaKMV(1024);
         int size = 10000000;
         for (int i = 0; i < size; i++) {
             adaKMV.offer(TestICardinality.streamElement(i));
@@ -89,15 +91,15 @@ public class TestAdaKMV {
 
 
     @Test
-    public void testMerge() throws CardinalityMergeException {
+    public void testMergeSameThreshold() throws CardinalityMergeException {
         int numToMerge = 5;
-        int bits = 16;
+        int threshold = 1024;
         int cardinality = 1000000;
 
         AdaKMV[] adaKMVs = new AdaKMV[numToMerge];
-        AdaKMV baseline = new AdaKMV(bits);
+        AdaKMV baseline = new AdaKMV(threshold);
         for (int i = 0; i < numToMerge; i++) {
-            adaKMVs[i] = new AdaKMV(bits);
+            adaKMVs[i] = new AdaKMV(threshold);
             for (int j = 0; j < cardinality; j++) {
                 double val = Math.random();
                 adaKMVs[i].offer(val);
@@ -107,11 +109,11 @@ public class TestAdaKMV {
 
 
         long expectedCardinality = numToMerge * cardinality;
-        AdaKMV hll = adaKMVs[0];
+        AdaKMV adaKMV = adaKMVs[0];
         adaKMVs = Arrays.asList(adaKMVs).subList(1, adaKMVs.length).toArray(new AdaKMV[0]);
-        long mergedEstimate = hll.merge(adaKMVs).cardinality();
+        long mergedEstimate = adaKMV.merge(adaKMVs).cardinality();
         long baselineEstimate = baseline.cardinality();
-        double se = expectedCardinality * (1.04 / Math.sqrt(Math.pow(2, bits)));
+        double se = expectedCardinality * 0.1; // TODO: find a more accurate way of computing se
 
         System.out.println("Baseline estimate: " + baselineEstimate);
         System.out.println("Expect estimate: " + mergedEstimate + " is between " + (expectedCardinality - (3 * se)) + " and " + (expectedCardinality + (3 * se)));
@@ -121,46 +123,41 @@ public class TestAdaKMV {
         assertEquals(mergedEstimate, baselineEstimate);
     }
 
-    /**
-     * should not fail with AdaKMVMergeException: "Cannot merge estimators of different sizes"
-     */
     @Test
-    public void testMergeWithRegisterSet() throws CardinalityMergeException {
-        AdaKMV first = new AdaKMV(16, new RegisterSet(1 << 20));
-        AdaKMV second = new AdaKMV(16, new RegisterSet(1 << 20));
-        first.offer(0);
-        second.offer(1);
-        first.merge(second);
-    }
+    public void testMergeDifferentThreshold() throws CardinalityMergeException {
+        int numToMerge = 5;
+        int threshold = 128;
+        int cardinality = 1000000;
 
-    @Test
-    @Ignore
-    public void testPrecise() throws CardinalityMergeException {
-        int cardinality = 1000000000;
-        int b = 12;
-        AdaKMV baseline = new AdaKMV(b);
-        AdaKMV guava128 = new AdaKMV(b);
-        HashFunction hf128 = Hashing.murmur3_128();
-        for (int j = 0; j < cardinality; j++) {
-            Double val = Math.random();
-            String valString = val.toString();
-            baseline.offer(valString);
-            guava128.offerHashed(hf128.hashString(valString, Charsets.UTF_8).asLong());
-            if (j > 0 && j % 1000000 == 0) {
-                System.out.println("current count: " + j);
+        AdaKMV[] adaKMVs = new AdaKMV[numToMerge];
+        AdaKMV baseline = new AdaKMV(threshold*6);
+        for (int i = 0; i < numToMerge; i++) {
+            adaKMVs[i] = new AdaKMV(threshold*(6-i));
+            for (int j = 0; j < cardinality; j++) {
+                double val = Math.random();
+                adaKMVs[i].offer(val);
+                baseline.offer(val);
             }
         }
 
 
+        long expectedCardinality = numToMerge * cardinality;
+        AdaKMV adaKMV = adaKMVs[0];
+        adaKMVs = Arrays.asList(adaKMVs).subList(1, adaKMVs.length).toArray(new AdaKMV[0]);
+        long mergedEstimate = adaKMV.merge(adaKMVs).cardinality();
         long baselineEstimate = baseline.cardinality();
-        long g128Estimate = guava128.cardinality();
-        double se = cardinality * (1.04 / Math.sqrt(Math.pow(2, b)));
-        double baselineError = (baselineEstimate - cardinality) / (double) cardinality;
-        double g128Error = (g128Estimate - cardinality) / (double) cardinality;
-        System.out.format("b: %f g128 %f", baselineError, g128Error);
-        assertTrue("baseline estimate bigger than expected", baselineEstimate >= cardinality - (2 * se));
-        assertTrue("baseline estimate smaller than expected", baselineEstimate <= cardinality + (2 * se));
-        assertTrue("g128 estimate bigger than expected", g128Estimate >= cardinality - (2 * se));
-        assertTrue("g128 estimate smaller than expected", g128Estimate <= cardinality + (2 * se));
+        double se = expectedCardinality * 0.1; // TODO: find a more accurate way of computing se
+
+        System.out.println("Baseline estimate: " + baselineEstimate);
+        System.out.println("Expect estimate: " + mergedEstimate + " is between " + (expectedCardinality - (3 * se)) + " and " + (expectedCardinality + (3 * se)));
+        System.out.println("Estimate error: " + Math.abs(expectedCardinality - mergedEstimate) /
+                (double) expectedCardinality);
+
+
+        assertTrue(mergedEstimate >= expectedCardinality - (3 * se));
+        assertTrue(mergedEstimate <= expectedCardinality + (3 * se));
+        assertEquals(mergedEstimate, baselineEstimate);
     }
+
+
 }
