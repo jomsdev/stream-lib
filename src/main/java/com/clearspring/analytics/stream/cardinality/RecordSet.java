@@ -22,7 +22,6 @@ public class RecordSet {
 
 
     private int replacementThreshold;
-    private int currentSize = 0;
     private int maxSize;
     private int recordCounter = 0;
     private TreeSet<Long>  records;
@@ -54,23 +53,30 @@ public class RecordSet {
     }
 
     public int currentSize(){
-        return currentSize;
+        return records.size() + pseudoRecords.size();
     }
 
     public boolean offer(long value) {
         boolean cardinalityAffected = false;
 
-        if (!records.contains(value)){
+        if (!this.contains(value)){
             if(records.size() < replacementThreshold || value < records.last()){
                 records.add(value);
                 ++recordCounter;
                 cardinalityAffected = true;
+            } else if (!pseudoRecords.isEmpty() && value < pseudoRecords.last()){
+                pseudoRecords.add(value);
+                pseudoRecords.remove(pseudoRecords.last());
+                cardinalityAffected = true;
             }
-            if(records.size() > replacementThreshold){
+            if (records.size() > replacementThreshold){
+                pseudoRecords.add(records.last());
                 records.remove(records.last());
             }
+            if (currentSize() > maxSize){
+                pseudoRecords.remove(pseudoRecords.last());
+            }
         }
-        currentSize = records.size() + pseudoRecords.size();
 
         return cardinalityAffected;
     }
@@ -79,6 +85,10 @@ public class RecordSet {
         for(Long record : that.records()){
             this.offer(record);
         }
+    }
+
+    public boolean contains(long value){
+        return this.records.contains(value) || this.pseudoRecords.contains(value);
     }
 
     public Long maxValue() throws UnsupportedOperationException {
@@ -98,6 +108,7 @@ public class RecordSet {
     public int replacementThreshold(){
         return replacementThreshold;
     }
+
     public TreeSet<Long> records(){
         return records;
     }
