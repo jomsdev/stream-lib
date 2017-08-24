@@ -16,10 +16,8 @@
 
 package com.clearspring.analytics.stream.cardinality;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
@@ -76,16 +74,20 @@ public class TestRecordSet {
         assertEquals(rs.currentSize(), 10);
     }
 
-    @Ignore
     @Test
     public void testContains() {
-        RecordSet rs = new RecordSet(9, 0, 10,
+        RecordSet rs = new RecordSet(5, 0, 10,
                 new TreeSet<Long>(), new TreeSet<Long>());
-        for (int i = 0; i < 10; i++){
-            rs.offer(i);
-            assertTrue(rs.contains(i));
-            assertTrue(!rs.contains(i+20));
+        for (int i = 0; i < 5; i++){
+            rs.offer(i*10);
+            assertTrue(rs.contains(i*10));
+            assertTrue(!rs.contains((i+1)*200));
         }
+        rs.offer(5); // Push 40 to pseudorecord status
+        assertTrue(rs.contains(5));
+        assertTrue(rs.contains(40));
+        rs.offer(35); // Swap last pseudorecord 40 by 35
+        assertTrue(rs.contains(35));
 
     }
 
