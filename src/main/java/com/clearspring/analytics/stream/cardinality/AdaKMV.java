@@ -91,6 +91,11 @@ public class AdaKMV implements ICardinality, Serializable {
         this.recordSet = recordSet;
     }
 
+
+    public int recordsSize(){
+        return recordSet.currentSize();
+    }
+
     @Override
     public boolean offerHashed(long hashedValue) {
         final long value = Math.abs(hashedValue);
